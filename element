@@ -1,40 +1,52 @@
+-- Autojoiner Script
 local HttpService = game:GetService("HttpService")
-local player = game.Players.LocalPlayer
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
 
--- URL-ul API-ului tău (Railway Proxy)
-local API_URL = "https://web-production-d7a92.up.railway.app/report"
+-- ID-ul unic generat de bot
+local ELEMENT_ID = "USER_ID"
 
--- ID-ul utilizatorului (inserat de bot în loadstring)
-if not ID then
-    warn("❌ Nu există ID definit!")
-    return
-end
+-- API-ul tău Railway
+local API_URL = "https://web-production-d7a92.up.railway.app/get_job?id=" .. ELEMENT_ID
 
-local payload = {
-    user_id = ID,
-    username = player.Name,
-    job_id = game.JobId
-}
+-- Funcție ca să ia job_id și place_id din API
+local function getJobData()
+    local success, response = pcall(function()
+        return HttpService:GetAsync(API_URL)
+    end)
 
-local body = HttpService:JSONEncode(payload)
-
-local req = http_request or syn and syn.request or fluxus and fluxus.request or request
-
-if req then
-    local response = req({
-        Url = API_URL,
-        Method = "POST",
-        Headers = {
-            ["Content-Type"] = "application/json"
-        },
-        Body = body
-    })
-
-    if response.Success then
-        print("✅ Raport trimis cu succes:", response.Body)
+    if success then
+        local data = HttpService:JSONDecode(response)
+        if data and data.job_id and data.place_id then
+            return data
+        else
+            warn("❌ Nu am primit job_id sau place_id din server.")
+        end
     else
-        warn("❌ Eroare la trimitere:", response.StatusCode, response.Body)
+        warn("❌ Eroare la conectarea la API: " .. tostring(response))
     end
-else
-    warn("❌ Executorul nu suportă request-uri HTTP")
+    return nil
 end
+
+-- Funcție ca să dea join
+local function joinJob()
+    local jobData = getJobData()
+    if jobData then
+        print("✅ Gasit job_id: " .. jobData.job_id .. " | place_id: " .. jobData.place_id)
+        TeleportService:TeleportToPlaceInstance(jobData.place_id, jobData.job_id, Players.LocalPlayer)
+    else
+        warn("⚠️ Niciun job disponibil pentru acest ID.")
+    end
+end
+
+-- Dacă teleport-ul pică, reîncearcă
+Players.LocalPlayer.OnTeleport:Connect(function(State)
+    if State == Enum.TeleportState.Failed then
+        warn("❌ Teleport failed, retrying...")
+        task.wait(5)
+        joinJob()
+    end
+end)
+
+-- Rulează
+joinJob()
