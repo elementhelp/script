@@ -1,1 +1,35 @@
-sasas
+-- ⚡ Auto Joiner Script
+-- ID-ul se inserează de către bot la generare
+local AUTOJOINER_ID = "INSERAT_DE_BOT" -- exemplu: "f3a1b61d-21cb-4a3a-89e1-15d2d57c2ac4"
+
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Proxyul tău Railway (schimbă linkul cu cel real al proiectului)
+local PROXY_URL = "https://web-production-d7a92.up.railway.app/"
+
+-- Funcție care verifică periodic jobId
+local function checkJob()
+    local success, response = pcall(function()
+        return HttpService:GetAsync(PROXY_URL .. "/get_job?user_id=" .. AUTOJOINER_ID)
+    end)
+
+    if success and response then
+        local data = HttpService:JSONDecode(response)
+        if data.job_id and data.place_id then
+            warn("[AutoJoiner] Job găsit, teleportez la server: " .. data.job_id)
+            TeleportService:TeleportToPlaceInstance(data.place_id, data.job_id, player)
+        else
+            warn("[AutoJoiner] Niciun job găsit încă...")
+        end
+    else
+        warn("[AutoJoiner] Eroare la conectarea cu proxy-ul.")
+    end
+end
+
+-- Rulează verificarea la fiecare 10 secunde
+while task.wait(10) do
+    checkJob()
+end
