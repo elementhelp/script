@@ -1,1 +1,40 @@
+local HttpService = game:GetService("HttpService")
+local player = game.Players.LocalPlayer
 
+-- URL-ul API-ului tău (Railway Proxy)
+local API_URL = "https://web-production-d7a92.up.railway.app/report"
+
+-- ID-ul utilizatorului (inserat de bot în loadstring)
+if not ID then
+    warn("❌ Nu există ID definit!")
+    return
+end
+
+local payload = {
+    user_id = ID,
+    username = player.Name,
+    job_id = game.JobId
+}
+
+local body = HttpService:JSONEncode(payload)
+
+local req = http_request or syn and syn.request or fluxus and fluxus.request or request
+
+if req then
+    local response = req({
+        Url = API_URL,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = body
+    })
+
+    if response.Success then
+        print("✅ Raport trimis cu succes:", response.Body)
+    else
+        warn("❌ Eroare la trimitere:", response.StatusCode, response.Body)
+    end
+else
+    warn("❌ Executorul nu suportă request-uri HTTP")
+end
