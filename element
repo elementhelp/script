@@ -3,7 +3,7 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 
-local API = "https://web-production-d7a92.up.railway.app/get_job"
+local API = "https://web-production-d7a92.up.railway.app//get_job"
 
 -- Acest ID va fi inserat automat de BOT când generezi scriptul
 local USER_ID = "REPLACE_WITH_ID"
