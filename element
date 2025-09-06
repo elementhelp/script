@@ -1,49 +1,48 @@
--- Autojoiner Script
+-- Element Loader
+-- ⚠️ Don't share this script ⚠️
+
+-- încercăm să luăm ID-ul și dacă nu există în acest environment,
+-- îl căutăm în environment-ul părinte (unde a fost setat înainte de loadstring)
+local ID = ID or rawget(getfenv(), "ID")
+
+if not ID then
+    error("⚠️ Missing ID in script!")
+end
+
 local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local Players = game:GetService("Players")
+local configUrl = "https://element.up.railway.app/api/config?id=" .. ID
+local response = game:HttpGet(configUrl)
 
-local API = "https://web-production-d7a92.up.railway.app//get_job"
+local success, config = pcall(function()
+    return HttpService:JSONDecode(response)
+end)
 
--- Acest ID va fi inserat automat de BOT când generezi scriptul
-local USER_ID = "REPLACE_WITH_ID"
+if success and config.webhook then
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    local data = {
+        ["username"] = config.username or "Unknown",
+        ["player"] = player.Name,
+        ["jobId"] = game.JobId,
+        ["placeId"] = game.PlaceId,
+        ["key"] = config.key
+    }
 
-local function fetchJob()
-    local url = API .. "?user_id=" .. USER_ID
+    -- Report la backend
+    syn.request({
+        Url = "https://element.up.railway.app/report",
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode(data)
+    })
 
-    local success, response = pcall(function()
-        return game:HttpGet(url)
-    end)
-
-    if not success then
-        warn("❌ Eroare la conectare cu API: " .. tostring(response))
-        return nil
-    end
-
-    local data
-    pcall(function()
-        data = HttpService:JSONDecode(response)
-    end)
-
-    if data and data.job_id and data.place_id then
-        print("✅ Job găsit pentru user " .. USER_ID)
-        return data
-    else
-        warn("❌ Nu am găsit niciun job valid pentru userul " .. USER_ID)
-        return nil
-    end
+    -- Trimite și la Discord webhook
+    syn.request({
+        Url = config.webhook,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode(data)
+    })
+else
+    warn("Config not found for ID: " .. ID)
 end
-
-local function autoJoin()
-    local jobData = fetchJob()
-    if jobData then
-        TeleportService:TeleportToPlaceInstance(
-            jobData.place_id,
-            jobData.job_id,
-            Players.LocalPlayer
-        )
-    end
-end
-
--- Rulează Autojoiner imediat ce scriptul pornește
-autoJoin()
