@@ -1,48 +1,50 @@
--- Element Loader
--- ⚠️ Don't share this script ⚠️
-
--- încercăm să luăm ID-ul și dacă nu există în acest environment,
--- îl căutăm în environment-ul părinte (unde a fost setat înainte de loadstring)
-local ID = ID or rawget(getfenv(), "ID")
-
-if not ID then
-    error("⚠️ Missing ID in script!")
-end
-
 local HttpService = game:GetService("HttpService")
-local configUrl = "https://element.up.railway.app/api/config?id=" .. ID
-local response = game:HttpGet(configUrl)
 
-local success, config = pcall(function()
-    return HttpService:JSONDecode(response)
+-- ✅ Custom ID din bot (generate)
+local CUSTOM_ID = "1fed66b3-d295-496d-aec6-c585e6737812"
+
+-- ✅ URL API-ul tău (schimbă dacă nu e railway)
+local API_URL = "https://element.up.railway.app"
+
+-- --------------------------
+-- 1. Ia config din API
+-- --------------------------
+local success, response = pcall(function()
+    return HttpService:GetAsync(API_URL .. "/config/" .. CUSTOM_ID)
 end)
 
-if success and config.webhook then
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
-    local data = {
-        ["username"] = config.username or "Unknown",
-        ["player"] = player.Name,
-        ["jobId"] = game.JobId,
-        ["placeId"] = game.PlaceId,
-        ["key"] = config.key
-    }
-
-    -- Report la backend
-    syn.request({
-        Url = "https://element.up.railway.app/report",
-        Method = "POST",
-        Headers = {["Content-Type"] = "application/json"},
-        Body = HttpService:JSONEncode(data)
-    })
-
-    -- Trimite și la Discord webhook
-    syn.request({
-        Url = config.webhook,
-        Method = "POST",
-        Headers = {["Content-Type"] = "application/json"},
-        Body = HttpService:JSONEncode(data)
-    })
-else
-    warn("Config not found for ID: " .. ID)
+if not success then
+    warn("❌ Failed to fetch config: " .. tostring(response))
+    return
 end
+
+local data = HttpService:JSONDecode(response)
+
+if data.error then
+    warn("❌ Config error: " .. data.error)
+    return
+end
+
+print("✅ Config loaded for " .. (data.username or "Unknown"))
+
+-- --------------------------
+-- 2. Trimite report la API
+-- --------------------------
+local payload = {
+    id = CUSTOM_ID,
+    username = data.username,
+    player = game.Players.LocalPlayer.Name,
+    jobId = game.JobId,
+    placeId = game.PlaceId
+}
+
+pcall(function()
+    HttpService:PostAsync(
+        API_URL .. "/report",
+        HttpService:JSONEncode(payload),
+        Enum.HttpContentType.ApplicationJson
+    )
+end)
+
+print("📡 Report sent for JobId " .. game.JobId)
+
